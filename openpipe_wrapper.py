@@ -29,13 +29,6 @@ class MaePipe(torch.nn.Module):
             self.model.load_state_dict(checkpoint['model'])
             print("Resume checkpoint %s" % args.resume)
 
-    @classmethod
-    def build(cls):
-        parser = get_args_parser()
-        given_args = '--eval --resume https://dl.fbaipublicfiles.com/mae/finetune/mae_finetuned_vit_base.pth --model vit_base_patch16'
-        args = parser.parse_args(given_args.split())
-        return cls(args)
-
     def preprocess(self, *args, **kwargs):
         output = self.transform(kwargs['images'])
         output = output.unsqueeze(0)
@@ -57,8 +50,11 @@ class MaePipe(torch.nn.Module):
 
 
 if __name__ == '__main__':
+    parser = get_args_parser()
+    given_args = '--eval --resume https://dl.fbaipublicfiles.com/mae/finetune/mae_finetuned_vit_base.pth --model vit_base_patch16'
+    args = parser.parse_args(given_args.split())
 
-    model = MaePipe.build()
+    model = MaePipe(args)
     dataset = openpipe.datasets.ImageNet1K(split='val')
     iterator = openpipe.launch(
         'image-classification',
