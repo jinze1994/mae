@@ -32,7 +32,7 @@ class MaePipe(torch.nn.Module):
     @classmethod
     def build(cls):
         parser = get_args_parser()
-        given_args = '--eval --resume mae_finetuned_vit_base.pth --model vit_base_patch16'
+        given_args = '--eval --resume https://dl.fbaipublicfiles.com/mae/finetune/mae_finetuned_vit_base.pth --model vit_base_patch16'
         args = parser.parse_args(given_args.split())
         return cls(args)
 
