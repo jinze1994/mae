@@ -19,7 +19,6 @@ class MaeImagenet1K(torch.nn.Module):
             drop_path_rate=args.drop_path,
             global_pool=args.global_pool,
         )
-        self.id2label, _ = openpipe.datasets.ImageNet1K.vit_label_mapping()
         if args.resume:
             if args.resume.startswith('http'):
                 checkpoint = torch.hub.load_state_dict_from_url(
@@ -46,7 +45,7 @@ class MaeImagenet1K(torch.nn.Module):
 
         scores = scores.tolist()
         ids = ids.tolist()
-        return [{"score": score, "label": self.id2label[_id]} for score, _id in zip(scores, ids)]
+        return [{"score": score, "label_id": id} for score, id in zip(scores, ids)]
 
 
 if __name__ == '__main__':
@@ -60,10 +59,11 @@ if __name__ == '__main__':
         'image-classification',
         dataset=dataset,
         model=model)
+    id2label, _ = openpipe.datasets.ImageNet1K.vit_label_mapping()
 
     gt, pred = [], []
     for i, res in enumerate(tqdm.tqdm(iterator, total=dataset.global_data_size)):
-        pred.append(res['image'][0]['label'])
+        pred.append(id2label[res['image'][0]['label_id']])
         gt.append(res['label'])
         if i > 100:
             break
