@@ -9,7 +9,7 @@ from main_finetune import get_args_parser
 
 
 @openpipe.register(pipelines="image-classification")
-class MaeImagenet1K(torch.nn.Module):
+class MaeForImageClassification(torch.nn.Module):
 
     def __init__(self, args):
         super().__init__()
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     given_args = '--eval --resume https://dl.fbaipublicfiles.com/mae/finetune/mae_finetuned_vit_base.pth --model vit_base_patch16'
     args = parser.parse_args(given_args.split())
 
-    model = MaeImagenet1K(args)
+    model = MaeForImageClassification(args)
     dataset = openpipe.datasets.ImageNet1K(split='val')
     iterator = openpipe.launch(
         'image-classification',
