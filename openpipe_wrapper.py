@@ -8,8 +8,7 @@ from util.datasets import build_transform
 from main_finetune import get_args_parser
 
 
-@openpipe.register(pipelines="image-classification")
-class MaeForImageClassification(torch.nn.Module):
+class MaeClassificationTask(openpipe.tasks.ImageClassificationTask):
 
     def __init__(self, args):
         super().__init__()
@@ -28,45 +27,33 @@ class MaeForImageClassification(torch.nn.Module):
             self.model.load_state_dict(checkpoint['model'])
             print("Resume checkpoint %s" % args.resume)
 
-    def preprocess(self, *args, **kwargs):
-        output = self.transform(kwargs['images'])
-        output = output.unsqueeze(0)
-        return {"pixel_values": output}
+    def preprocess(self, image):
+        return self.transform(image).unsqueeze(0)
 
-    def __call__(self, *args, **kwargs):
-        logits = self.model(kwargs['pixel_values'])
-        return {"logits": logits}
+    def forward(self, inputs):
+        return {"logits": self.model(inputs)}
 
-    def postprocess(self, *args, **kwargs):
-        logits = kwargs["logits"]
-        top_k = kwargs.pop('top_k', 5)
-        probs = logits.softmax(-1)[0]
-        scores, ids = probs.topk(top_k)
-
-        scores = scores.tolist()
-        ids = ids.tolist()
-        return [{"score": score, "label_id": id} for score, id in zip(scores, ids)]
+    def id2label(self):
+        with open('id2label.txt') as f:
+            return f.read().split('\n')[1 : 1001]
 
 
 if __name__ == '__main__':
     parser = get_args_parser()
     given_args = '--eval --resume https://dl.fbaipublicfiles.com/mae/finetune/mae_finetuned_vit_base.pth --model vit_base_patch16'
     args = parser.parse_args(given_args.split())
+    task = MaeClassificationTask(args)
 
-    model = MaeForImageClassification(args)
     dataset = openpipe.datasets.ImageNet1K(split='val')
-    iterator = openpipe.launch(
-        'image-classification',
-        dataset=dataset,
-        model=model)
-    id2label, _ = openpipe.datasets.ImageNet1K.vit_label_mapping()
+    metric = openpipe.metrics.Accuracy()
+    pip = openpipe.pipeline.concat(dataset, task, metric)
+    print(pip)
 
-    gt, pred = [], []
-    for i, res in enumerate(tqdm.tqdm(iterator, total=dataset.global_data_size)):
-        pred.append(id2label[res['image'][0]['label_id']])
-        gt.append(res['label'])
-        if i > 100:
+    acc1 = []
+    for i, res in enumerate(tqdm.tqdm(pip, total=dataset.global_data_size)):
+        acc1.append(res)
+        if i == 100:
             break
 
-    acc1 = (np.array(gt) == np.array(pred)).mean()
+    acc1 = np.mean(acc1)
     print(acc1)
